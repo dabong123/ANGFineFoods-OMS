@@ -19,7 +19,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{invoice.invoiceNumber}</h1>
           <InvoiceStatusBadge status={invoice.status} />
           {invoice.isOverdue && (

@@ -15,7 +15,7 @@ export function DeliveriesList({ deliveries }: { deliveries: DeliveryDTO[] }) {
         {deliveries.map((d) => (
           <div
             key={d.id}
-            className="flex items-center justify-between rounded-md border border-border p-3 text-sm"
+            className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <span className="font-medium">{d.deliveryNumber}</span>{" "}

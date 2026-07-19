@@ -36,9 +36,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{order.orderNumber}</h1>
             <OrderStatusBadge status={order.status} />
           </div>

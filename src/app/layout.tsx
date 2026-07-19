@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import "./globals.css";
@@ -11,6 +11,18 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "ANG Fine Foods — OMS",
   description: "Order Management System for ANG Fine Foods",
+  applicationName: "ANG OMS",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ANG OMS",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({
