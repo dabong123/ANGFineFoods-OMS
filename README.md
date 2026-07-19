@@ -39,10 +39,16 @@ AR reporting; owner has full access.
 ## Project status
 
 - [x] Auth.js — credentials login, JWT session, role-gated middleware
-- [ ] Order creation (customer/product picker, per-line fulfillment source,
-      purchase requests)
+- [x] Order creation — customer/product picker with auto-applied pricing,
+      per-line fulfillment source (storage/supplier), purchase request
+      generation, create/edit/approve/cancel server actions
 - [ ] Invoice generation on delivery + AR
 - [ ] Dashboard metrics wired to real data
+
+Note: customer/product/supplier records themselves are managed only via
+`prisma/seed.ts` for now — there's no admin CRUD UI for master data yet.
+That's a separate concern from the order-creation workflow this milestone
+covers.
 
 The Prisma schema (`prisma/schema.prisma`) already models the full domain
 (orders, order lines, purchase requests, inventory, deliveries, invoices,
