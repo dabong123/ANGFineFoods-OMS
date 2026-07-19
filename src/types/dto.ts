@@ -1,5 +1,7 @@
 import type {
+  DeliveryStatus,
   FulfillmentSource,
+  InvoiceStatus,
   OrderStatus,
   PurchaseRequestStatus,
 } from "@prisma/client";
@@ -44,7 +46,9 @@ export type OrderLineDTO = {
   supplierId: string | null;
   supplierName: string | null;
   stockDeducted: boolean;
+  purchaseRequestId: string | null;
   purchaseRequestStatus: PurchaseRequestStatus | null;
+  deliveryId: string | null;
 };
 
 export type OrderListItemDTO = {
@@ -56,6 +60,17 @@ export type OrderListItemDTO = {
   orderDate: string;
   total: number;
   lineCount: number;
+};
+
+export type DeliveryDTO = {
+  id: string;
+  deliveryNumber: string;
+  status: DeliveryStatus;
+  deliveredAt: string | null;
+  notes: string | null;
+  lineIds: string[];
+  invoiceId: string | null;
+  invoiceNumber: string | null;
 };
 
 export type OrderDetailDTO = {
@@ -74,4 +89,72 @@ export type OrderDetailDTO = {
   approvedByName: string | null;
   cancelledAt: string | null;
   lines: OrderLineDTO[];
+  deliveries: DeliveryDTO[];
+};
+
+export type PurchaseRequestListItemDTO = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  productName: string;
+  productSku: string;
+  unit: string;
+  supplierName: string;
+  quantity: number;
+  status: PurchaseRequestStatus;
+  expectedDate: string | null;
+  receivedAt: string | null;
+  createdAt: string;
+};
+
+export type AgingBucket = "current" | "1-30" | "31-60" | "61-90" | "90+";
+
+export type InvoiceListItemDTO = {
+  id: string;
+  invoiceNumber: string;
+  orderNumber: string;
+  customerName: string;
+  issueDate: string;
+  dueDate: string;
+  total: number;
+  balance: number;
+  status: InvoiceStatus;
+  isOverdue: boolean;
+  agingBucket: AgingBucket | null;
+};
+
+export type PaymentDTO = {
+  id: string;
+  amount: number;
+  paymentDate: string;
+  method: string | null;
+  reference: string | null;
+  notes: string | null;
+  recordedByName: string;
+};
+
+export type InvoiceDetailDTO = {
+  id: string;
+  invoiceNumber: string;
+  orderId: string;
+  orderNumber: string;
+  deliveryId: string;
+  deliveryNumber: string;
+  customerName: string;
+  issueDate: string;
+  dueDate: string;
+  subtotal: number;
+  total: number;
+  amountPaid: number;
+  balance: number;
+  status: InvoiceStatus;
+  isOverdue: boolean;
+  lines: OrderLineDTO[];
+  payments: PaymentDTO[];
+};
+
+export type ArAgingSummary = {
+  buckets: Record<AgingBucket, number>;
+  totalOutstanding: number;
+  invoiceCount: number;
 };

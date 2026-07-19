@@ -45,7 +45,14 @@ export async function getOrderDetailForSession(
         include: {
           product: { select: { name: true, sku: true, unit: true } },
           supplier: { select: { name: true } },
-          purchaseRequest: { select: { status: true } },
+          purchaseRequest: { select: { id: true, status: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      deliveries: {
+        include: {
+          invoice: { select: { id: true, invoiceNumber: true } },
+          lines: { select: { id: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -85,7 +92,19 @@ export async function getOrderDetailForSession(
       supplierId: line.supplierId,
       supplierName: line.supplier?.name ?? null,
       stockDeducted: line.stockDeducted,
+      purchaseRequestId: line.purchaseRequest?.id ?? null,
       purchaseRequestStatus: line.purchaseRequest?.status ?? null,
+      deliveryId: line.deliveryId,
+    })),
+    deliveries: order.deliveries.map((d) => ({
+      id: d.id,
+      deliveryNumber: d.deliveryNumber,
+      status: d.status,
+      deliveredAt: d.deliveredAt?.toISOString() ?? null,
+      notes: d.notes,
+      lineIds: d.lines.map((l) => l.id),
+      invoiceId: d.invoice?.id ?? null,
+      invoiceNumber: d.invoice?.invoiceNumber ?? null,
     })),
   };
 }

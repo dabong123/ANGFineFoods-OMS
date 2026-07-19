@@ -42,22 +42,38 @@ AR reporting; owner has full access.
 - [x] Order creation — customer/product picker with auto-applied pricing,
       per-line fulfillment source (storage/supplier), purchase request
       generation, create/edit/approve/cancel server actions
-- [ ] Invoice generation on delivery + AR
+- [x] Delivery + invoicing + AR — split deliveries (a line ships once, but
+      different lines on the same order can ship in different deliveries),
+      one invoice per delivery, payment recording, AR aging
 - [ ] Dashboard metrics wired to real data
 
 Note: customer/product/supplier records themselves are managed only via
 `prisma/seed.ts` for now — there's no admin CRUD UI for master data yet.
-That's a separate concern from the order-creation workflow this milestone
-covers.
+That's a separate concern from the workflows above.
 
 The Prisma schema (`prisma/schema.prisma`) already models the full domain
 (orders, order lines, purchase requests, inventory, deliveries, invoices,
 payments) so later milestones build on a stable schema rather than churning
 it per-feature.
 
-## Open decision: delivery flow
+## Delivery & invoicing model
 
-The schema is currently 1:1 `Order` → `Delivery`. For an order with mixed
-storage/supplier lines, should it ship as **one delivery** once everything is
-ready, or **split** into partial deliveries per fulfillment readiness? This
-needs an answer before the delivery-creation flow (milestone 3) is built.
+Resolved: deliveries **split** — an `OrderLine` always ships whole (its
+quantity is never divided across deliveries), but different lines on the
+same `Order` can go out in different `Delivery` records as each becomes
+ready (storage lines are ready once approved; supplier lines only once
+their `PurchaseRequest` is marked received). Each `Delivery` bills as its
+own `Invoice` — customers are billed as goods ship, not held until the
+whole order is complete. `Order.status` becomes `PARTIALLY_DELIVERED` once
+some but not all lines have shipped, `DELIVERED` once all have.
+
+Payment terms are a flat 30-day net, not yet customer-configurable
+(`DEFAULT_PAYMENT_TERMS_DAYS` in `src/lib/delivery-engine.ts`). Invoice
+"overdue" is derived at query time from `dueDate` + `balance` rather than
+stored, so AR aging never goes stale without a background job.
+
+Delivery creation and purchase-request status changes (mark
+ordered/received) are owner-only for now (`deliveries:create` /
+`purchaseRequests:manage`) — there's no dedicated warehouse/ops role in the
+three-role system, and this felt closer to procurement than to accounting
+or sales.

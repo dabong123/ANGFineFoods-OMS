@@ -7,6 +7,8 @@ import { getOrderDetailForSession } from "@/lib/data/orders";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderActionsPanel } from "@/components/orders/order-actions-panel";
+import { DeliveriesList } from "@/components/deliveries/deliveries-list";
+import { CreateDeliveryPanel } from "@/components/deliveries/create-delivery-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,10 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     ((isOwnOrder && can(session.user.role, "orders:cancel:own")) ||
       can(session.user.role, "orders:cancel:all"));
   const canApprove = order.status === "PENDING_APPROVAL" && can(session.user.role, "orders:approve");
+  const canCreateDelivery =
+    (order.status === "APPROVED" || order.status === "PARTIALLY_DELIVERED") &&
+    can(session.user.role, "deliveries:create");
+  const undeliveredLines = order.lines.filter((l) => !l.deliveryId);
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -98,6 +104,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                           {line.purchaseRequestStatus ? ` · PR ${line.purchaseRequestStatus}` : ""}
                         </span>
                       )}
+                      {line.deliveryId ? (
+                        <Badge variant="outline" className="w-fit text-xs">
+                          Delivered
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="w-fit text-xs text-muted-foreground">
+                          Not delivered
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-medium">
@@ -125,6 +140,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       )}
 
       <OrderActionsPanel orderId={order.id} canApprove={canApprove} canCancel={canCancel} />
+
+      <DeliveriesList deliveries={order.deliveries} />
+
+      {canCreateDelivery && (
+        <CreateDeliveryPanel
+          key={undeliveredLines.map((l) => l.id).join(",")}
+          orderId={order.id}
+          undeliveredLines={undeliveredLines}
+        />
+      )}
     </div>
   );
 }

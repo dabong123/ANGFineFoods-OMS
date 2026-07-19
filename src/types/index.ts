@@ -28,6 +28,7 @@ export type Permission =
   | "products:manage"
   | "suppliers:manage"
   | "purchaseRequests:manage"
+  | "deliveries:create"
   | "invoices:view"
   | "invoices:create"
   | "invoices:edit"
@@ -55,6 +56,7 @@ const OWNER_PERMISSIONS: Permission[] = [
   "products:manage",
   "suppliers:manage",
   "purchaseRequests:manage",
+  "deliveries:create",
   "invoices:view",
   "invoices:create",
   "invoices:edit",

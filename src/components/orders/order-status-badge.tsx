@@ -8,9 +8,8 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   APPROVED: "bg-emerald-100 text-emerald-800 border-transparent dark:bg-emerald-950 dark:text-emerald-300",
   REJECTED: "bg-red-100 text-red-800 border-transparent dark:bg-red-950 dark:text-red-300",
   CANCELLED: "bg-muted text-muted-foreground border-transparent line-through",
-  DELIVERED: "bg-blue-100 text-blue-800 border-transparent dark:bg-blue-950 dark:text-blue-300",
-  INVOICED: "bg-violet-100 text-violet-800 border-transparent dark:bg-violet-950 dark:text-violet-300",
-  COMPLETED: "bg-emerald-100 text-emerald-800 border-transparent dark:bg-emerald-950 dark:text-emerald-300",
+  PARTIALLY_DELIVERED: "bg-blue-100 text-blue-800 border-transparent dark:bg-blue-950 dark:text-blue-300",
+  DELIVERED: "bg-violet-100 text-violet-800 border-transparent dark:bg-violet-950 dark:text-violet-300",
 };
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -19,9 +18,8 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   APPROVED: "Approved",
   REJECTED: "Rejected",
   CANCELLED: "Cancelled",
+  PARTIALLY_DELIVERED: "Partially Delivered",
   DELIVERED: "Delivered",
-  INVOICED: "Invoiced",
-  COMPLETED: "Completed",
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

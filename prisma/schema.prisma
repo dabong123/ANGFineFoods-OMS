@@ -123,9 +123,8 @@ enum OrderStatus {
   APPROVED
   REJECTED
   CANCELLED
+  PARTIALLY_DELIVERED
   DELIVERED
-  INVOICED
-  COMPLETED
 }
 
 enum FulfillmentSource {
@@ -152,9 +151,9 @@ model Order {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  lines    OrderLine[]
-  delivery Delivery?
-  invoice  Invoice?
+  lines      OrderLine[]
+  deliveries Delivery[]
+  invoices   Invoice[]
 
   @@index([customerId])
   @@index([salesAgentId])
@@ -175,6 +174,8 @@ model OrderLine {
   supplierId        String?
   supplier          Supplier?         @relation(fields: [supplierId], references: [id])
   stockDeducted     Boolean           @default(false)
+  deliveryId        String?
+  delivery          Delivery?         @relation(fields: [deliveryId], references: [id])
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -182,6 +183,7 @@ model OrderLine {
 
   @@index([orderId])
   @@index([productId])
+  @@index([deliveryId])
   @@map("order_lines")
 }
 
@@ -242,47 +244,56 @@ model InventoryTransaction {
 }
 
 // ---------------------------------------------------------------------------
-// Delivery (schema is 1:1 Order -> Delivery; may change pending decision on
-// mixed-fulfillment orders shipping as one delivery vs. split partials)
+// Delivery — an order can ship as several partial deliveries; each
+// OrderLine belongs to at most one Delivery (a line always ships whole,
+// quantity is never split across deliveries). Each Delivery bills as its
+// own Invoice (see below) rather than the order billing as a whole.
 // ---------------------------------------------------------------------------
 
 enum DeliveryStatus {
   PENDING
   IN_TRANSIT
   DELIVERED
-  PARTIAL
 }
 
 model Delivery {
-  id          String         @id @default(cuid())
-  orderId     String         @unique
-  order       Order          @relation(fields: [orderId], references: [id])
-  status      DeliveryStatus @default(PENDING)
-  deliveredAt DateTime?
-  notes       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  deliveryNumber String         @unique
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id])
+  status         DeliveryStatus @default(PENDING)
+  deliveredAt    DateTime?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
+  lines   OrderLine[]
+  invoice Invoice?
+
+  @@index([orderId])
   @@map("deliveries")
 }
 
 // ---------------------------------------------------------------------------
-// Invoicing / AR
+// Invoicing / AR — one invoice per delivery (bill as you ship), not one per
+// order. `status` tracks payment state only; "overdue" is derived at query
+// time from dueDate + balance rather than stored, so it never goes stale.
 // ---------------------------------------------------------------------------
 
 enum InvoiceStatus {
   UNPAID
   PARTIALLY_PAID
   PAID
-  OVERDUE
   VOID
 }
 
 model Invoice {
   id            String        @id @default(cuid())
   invoiceNumber String        @unique
-  orderId       String        @unique
+  orderId       String
   order         Order         @relation(fields: [orderId], references: [id])
+  deliveryId    String        @unique
+  delivery      Delivery      @relation(fields: [deliveryId], references: [id])
   customerId    String
   customer      Customer      @relation(fields: [customerId], references: [id])
   issueDate     DateTime      @default(now())
@@ -297,6 +308,7 @@ model Invoice {
 
   payments Payment[]
 
+  @@index([orderId])
   @@index([customerId])
   @@index([status])
   @@map("invoices")

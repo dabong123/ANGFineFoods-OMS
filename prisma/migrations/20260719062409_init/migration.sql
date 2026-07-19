@@ -2,7 +2,7 @@
 CREATE TYPE "Role" AS ENUM ('OWNER', 'SALES_AGENT', 'ACCOUNTING');
 
 -- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CANCELLED', 'DELIVERED', 'INVOICED', 'COMPLETED');
+CREATE TYPE "OrderStatus" AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CANCELLED', 'PARTIALLY_DELIVERED', 'DELIVERED');
 
 -- CreateEnum
 CREATE TYPE "FulfillmentSource" AS ENUM ('STORAGE', 'SUPPLIER');
@@ -14,10 +14,10 @@ CREATE TYPE "PurchaseRequestStatus" AS ENUM ('PENDING', 'ORDERED', 'RECEIVED', '
 CREATE TYPE "InventoryTxnType" AS ENUM ('SALE_DEDUCTION', 'ADJUSTMENT', 'RECEIPT', 'RETURN');
 
 -- CreateEnum
-CREATE TYPE "DeliveryStatus" AS ENUM ('PENDING', 'IN_TRANSIT', 'DELIVERED', 'PARTIAL');
+CREATE TYPE "DeliveryStatus" AS ENUM ('PENDING', 'IN_TRANSIT', 'DELIVERED');
 
 -- CreateEnum
-CREATE TYPE "InvoiceStatus" AS ENUM ('UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'VOID');
+CREATE TYPE "InvoiceStatus" AS ENUM ('UNPAID', 'PARTIALLY_PAID', 'PAID', 'VOID');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -124,6 +124,7 @@ CREATE TABLE "order_lines" (
     "fulfillmentSource" "FulfillmentSource" NOT NULL,
     "supplierId" TEXT,
     "stockDeducted" BOOLEAN NOT NULL DEFAULT false,
+    "deliveryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -162,6 +163,7 @@ CREATE TABLE "inventory_transactions" (
 -- CreateTable
 CREATE TABLE "deliveries" (
     "id" TEXT NOT NULL,
+    "deliveryNumber" TEXT NOT NULL,
     "orderId" TEXT NOT NULL,
     "status" "DeliveryStatus" NOT NULL DEFAULT 'PENDING',
     "deliveredAt" TIMESTAMP(3),
@@ -177,6 +179,7 @@ CREATE TABLE "invoices" (
     "id" TEXT NOT NULL,
     "invoiceNumber" TEXT NOT NULL,
     "orderId" TEXT NOT NULL,
+    "deliveryId" TEXT NOT NULL,
     "customerId" TEXT NOT NULL,
     "issueDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "dueDate" TIMESTAMP(3) NOT NULL,
@@ -237,6 +240,9 @@ CREATE INDEX "order_lines_orderId_idx" ON "order_lines"("orderId");
 CREATE INDEX "order_lines_productId_idx" ON "order_lines"("productId");
 
 -- CreateIndex
+CREATE INDEX "order_lines_deliveryId_idx" ON "order_lines"("deliveryId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "purchase_requests_orderLineId_key" ON "purchase_requests"("orderLineId");
 
 -- CreateIndex
@@ -249,13 +255,19 @@ CREATE INDEX "purchase_requests_status_idx" ON "purchase_requests"("status");
 CREATE INDEX "inventory_transactions_productId_idx" ON "inventory_transactions"("productId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "deliveries_orderId_key" ON "deliveries"("orderId");
+CREATE UNIQUE INDEX "deliveries_deliveryNumber_key" ON "deliveries"("deliveryNumber");
+
+-- CreateIndex
+CREATE INDEX "deliveries_orderId_idx" ON "deliveries"("orderId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "invoices_invoiceNumber_key" ON "invoices"("invoiceNumber");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "invoices_orderId_key" ON "invoices"("orderId");
+CREATE UNIQUE INDEX "invoices_deliveryId_key" ON "invoices"("deliveryId");
+
+-- CreateIndex
+CREATE INDEX "invoices_orderId_idx" ON "invoices"("orderId");
 
 -- CreateIndex
 CREATE INDEX "invoices_customerId_idx" ON "invoices"("customerId");
@@ -294,6 +306,9 @@ ALTER TABLE "order_lines" ADD CONSTRAINT "order_lines_productId_fkey" FOREIGN KE
 ALTER TABLE "order_lines" ADD CONSTRAINT "order_lines_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "order_lines" ADD CONSTRAINT "order_lines_deliveryId_fkey" FOREIGN KEY ("deliveryId") REFERENCES "deliveries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "purchase_requests" ADD CONSTRAINT "purchase_requests_orderLineId_fkey" FOREIGN KEY ("orderLineId") REFERENCES "order_lines"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -310,6 +325,9 @@ ALTER TABLE "deliveries" ADD CONSTRAINT "deliveries_orderId_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "invoices" ADD CONSTRAINT "invoices_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_deliveryId_fkey" FOREIGN KEY ("deliveryId") REFERENCES "deliveries"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "invoices" ADD CONSTRAINT "invoices_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "customers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
