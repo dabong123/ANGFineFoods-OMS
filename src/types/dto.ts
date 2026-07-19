@@ -158,3 +158,9 @@ export type ArAgingSummary = {
   totalOutstanding: number;
   invoiceCount: number;
 };
+
+export type DashboardMetric = {
+  label: string;
+  value: string;
+  sublabel?: string;
+};

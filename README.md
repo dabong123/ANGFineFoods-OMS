@@ -45,7 +45,16 @@ AR reporting; owner has full access.
 - [x] Delivery + invoicing + AR — split deliveries (a line ships once, but
       different lines on the same order can ship in different deliveries),
       one invoice per delivery, payment recording, AR aging
-- [ ] Dashboard metrics wired to real data
+- [x] Dashboard metrics wired to real aggregates, tailored per role (owner:
+      open orders / revenue MTD / outstanding AR / overdue invoices;
+      accounting: outstanding AR / overdue / revenue MTD / unpaid invoice
+      count; sales agent: own open orders / orders MTD / order value MTD /
+      customer count — scoped to their own book, no AR or company revenue
+      exposed to a role that can't see invoices)
+
+All four milestones from the original brief are in. Remaining gaps are
+noted below (master-data CRUD, delivery/PR ops restricted to owner) rather
+than silently out of scope.
 
 Note: customer/product/supplier records themselves are managed only via
 `prisma/seed.ts` for now — there's no admin CRUD UI for master data yet.
