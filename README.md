@@ -68,9 +68,17 @@ rather than silently out of scope.
       server-side) stops the owner from demoting or deactivating their own
       account, since there's no recovery path if the only owner account
       gets locked out.
+- [x] Product management — create/edit UI at `/products`, owner-only.
+      Pricing and quantities are per-kilogram only (`unit` is hardcoded to
+      `"kg"` — not a per-product choice, since that's how this business
+      actually sells) with SKU auto-generated (`PROD-00001`, ...). Inventory
+      tracking is an optional toggle per product, consistent with "inventory
+      never blocks order creation"; deactivating a product hides it from new
+      orders without deleting the SKU that existing order/invoice history
+      references.
 
-Note: products and suppliers are still managed only via `prisma/seed.ts` —
-there's no admin CRUD UI for those yet.
+Note: suppliers are still managed only via `prisma/seed.ts` — there's no
+admin CRUD UI for those yet.
 
 The Prisma schema (`prisma/schema.prisma`) already models the full domain
 (orders, order lines, purchase requests, inventory, deliveries, invoices,

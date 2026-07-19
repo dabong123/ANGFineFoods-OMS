@@ -55,6 +55,7 @@ export type ProductDTO = {
   defaultSellingPrice: number;
   trackInventory: boolean;
   currentStock: number;
+  isActive: boolean;
 };
 
 export type SupplierDTO = {
