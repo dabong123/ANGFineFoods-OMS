@@ -4,6 +4,7 @@ import type {
   InvoiceStatus,
   OrderStatus,
   PurchaseRequestStatus,
+  Role,
 } from "@prisma/client";
 
 // Plain, RSC-serializable shapes. Prisma's Decimal is a class instance and
@@ -191,4 +192,21 @@ export type DashboardMetric = {
   label: string;
   value: string;
   sublabel?: string;
+};
+
+export type UserListItemDTO = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type UserDetailDTO = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
 };

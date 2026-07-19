@@ -61,6 +61,13 @@ rather than silently out of scope.
       their own; owner can create/edit any customer and reassign the sales
       agent; accounting is read-only (matches the existing permission map,
       no new permissions needed).
+- [x] User management — create/edit UI at `/users`, owner-only. Owner sets
+      an initial password directly on create (no email/invite flow — there's
+      no email-sending infrastructure in this app) and can reset any user's
+      password from the edit page. A self-lockout guard (client- and
+      server-side) stops the owner from demoting or deactivating their own
+      account, since there's no recovery path if the only owner account
+      gets locked out.
 
 Note: products and suppliers are still managed only via `prisma/seed.ts` —
 there's no admin CRUD UI for those yet.
