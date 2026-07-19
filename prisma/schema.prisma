@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth / Users
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  SALES_AGENT
+  ACCOUNTING
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(SALES_AGENT)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customers Customer[] @relation("SalesAgentCustomers")
+  orders    Order[]    @relation("SalesAgentOrders")
+  approvals Order[]    @relation("ApprovedOrders")
+  payments  Payment[]  @relation("RecordedPayments")
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Customers / Products / Pricing / Suppliers
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  contactName  String?
+  phone        String?
+  email        String?
+  address      String?
+  salesAgentId String
+  salesAgent   User     @relation("SalesAgentCustomers", fields: [salesAgentId], references: [id])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders        Order[]
+  productPrices CustomerProductPrice[]
+  invoices      Invoice[]
+
+  @@index([salesAgentId])
+  @@map("customers")
+}
+
+model Product {
+  id                  String   @id @default(cuid())
+  sku                 String   @unique
+  name                String
+  unit                String   @default("unit")
+  defaultSellingPrice Decimal  @db.Decimal(12, 2)
+  trackInventory      Boolean  @default(false)
+  currentStock        Decimal  @default(0) @db.Decimal(12, 3)
+  reorderPoint        Decimal? @db.Decimal(12, 3)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  customerPrices   CustomerProductPrice[]
+  orderLines       OrderLine[]
+  purchaseRequests PurchaseRequest[]
+  inventoryTxns    InventoryTransaction[]
+
+  @@map("products")
+}
+
+model CustomerProductPrice {
+  id         String   @id @default(cuid())
+  customerId String
+  productId  String
+  price      Decimal  @db.Decimal(12, 2)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([customerId, productId])
+  @@map("customer_product_prices")
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderLines       OrderLine[]
+  purchaseRequests PurchaseRequest[]
+
+  @@map("suppliers")
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+  DELIVERED
+  INVOICED
+  COMPLETED
+}
+
+enum FulfillmentSource {
+  STORAGE
+  SUPPLIER
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  customerId   String
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  salesAgentId String
+  salesAgent   User        @relation("SalesAgentOrders", fields: [salesAgentId], references: [id])
+  status       OrderStatus @default(DRAFT)
+  orderDate    DateTime    @default(now())
+  notes        String?
+  subtotal     Decimal     @default(0) @db.Decimal(12, 2)
+  total        Decimal     @default(0) @db.Decimal(12, 2)
+  approvedAt   DateTime?
+  approvedById String?
+  approvedBy   User?       @relation("ApprovedOrders", fields: [approvedById], references: [id])
+  cancelledAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  lines    OrderLine[]
+  delivery Delivery?
+  invoice  Invoice?
+
+  @@index([customerId])
+  @@index([salesAgentId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderLine {
+  id                String            @id @default(cuid())
+  orderId           String
+  order             Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product           @relation(fields: [productId], references: [id])
+  quantity          Decimal           @db.Decimal(12, 3)
+  unitPrice         Decimal           @db.Decimal(12, 2)
+  lineTotal         Decimal           @db.Decimal(12, 2)
+  fulfillmentSource FulfillmentSource
+  supplierId        String?
+  supplier          Supplier?         @relation(fields: [supplierId], references: [id])
+  stockDeducted     Boolean           @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  purchaseRequest PurchaseRequest?
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Purchase requests (generated when a line is Supplier-fulfilled)
+// ---------------------------------------------------------------------------
+
+enum PurchaseRequestStatus {
+  PENDING
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseRequest {
+  id           String                @id @default(cuid())
+  orderLineId  String                @unique
+  orderLine    OrderLine             @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+  supplierId   String
+  supplier     Supplier              @relation(fields: [supplierId], references: [id])
+  productId    String
+  product      Product               @relation(fields: [productId], references: [id])
+  quantity     Decimal               @db.Decimal(12, 3)
+  status       PurchaseRequestStatus @default(PENDING)
+  expectedDate DateTime?
+  receivedAt   DateTime?
+  notes        String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_requests")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory (optional per product — never blocks order creation)
+// ---------------------------------------------------------------------------
+
+enum InventoryTxnType {
+  SALE_DEDUCTION
+  ADJUSTMENT
+  RECEIPT
+  RETURN
+}
+
+model InventoryTransaction {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id])
+  type      InventoryTxnType
+  quantity  Decimal          @db.Decimal(12, 3)
+  note      String?
+  createdAt DateTime         @default(now())
+
+  @@index([productId])
+  @@map("inventory_transactions")
+}
+
+// ---------------------------------------------------------------------------
+// Delivery (schema is 1:1 Order -> Delivery; may change pending decision on
+// mixed-fulfillment orders shipping as one delivery vs. split partials)
+// ---------------------------------------------------------------------------
+
+enum DeliveryStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  PARTIAL
+}
+
+model Delivery {
+  id          String         @id @default(cuid())
+  orderId     String         @unique
+  order       Order          @relation(fields: [orderId], references: [id])
+  status      DeliveryStatus @default(PENDING)
+  deliveredAt DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("deliveries")
+}
+
+// ---------------------------------------------------------------------------
+// Invoicing / AR
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  VOID
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id])
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime
+  subtotal      Decimal       @db.Decimal(12, 2)
+  total         Decimal       @db.Decimal(12, 2)
+  amountPaid    Decimal       @default(0) @db.Decimal(12, 2)
+  balance       Decimal       @db.Decimal(12, 2)
+  status        InvoiceStatus @default(UNPAID)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  payments Payment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount       Decimal  @db.Decimal(12, 2)
+  paymentDate  DateTime @default(now())
+  method       String?
+  reference    String?
+  notes        String?
+  recordedById String
+  recordedBy   User     @relation("RecordedPayments", fields: [recordedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([invoiceId])
+  @@map("payments")
+}
