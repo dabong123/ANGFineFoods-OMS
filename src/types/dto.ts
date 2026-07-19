@@ -18,6 +18,34 @@ export type CustomerDTO = {
   salesAgentName: string;
 };
 
+export type CustomerListItemDTO = {
+  id: string;
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  salesAgentName: string;
+  isActive: boolean;
+};
+
+export type CustomerDetailDTO = {
+  id: string;
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  salesAgentId: string;
+  salesAgentName: string;
+  isActive: boolean;
+};
+
+export type AssignableAgentDTO = {
+  id: string;
+  name: string;
+  role: "OWNER" | "SALES_AGENT";
+};
+
 export type ProductDTO = {
   id: string;
   sku: string;

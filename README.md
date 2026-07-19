@@ -53,12 +53,17 @@ AR reporting; owner has full access.
       exposed to a role that can't see invoices)
 
 All four milestones from the original brief are in. Remaining gaps are
-noted below (master-data CRUD, delivery/PR ops restricted to owner) rather
-than silently out of scope.
+noted below (product/supplier CRUD, delivery/PR ops restricted to owner)
+rather than silently out of scope.
 
-Note: customer/product/supplier records themselves are managed only via
-`prisma/seed.ts` for now — there's no admin CRUD UI for master data yet.
-That's a separate concern from the workflows above.
+- [x] Customer management — create/edit UI at `/customers`, `/customers/new`.
+      Sales agents create customers pinned to themselves and can only edit
+      their own; owner can create/edit any customer and reassign the sales
+      agent; accounting is read-only (matches the existing permission map,
+      no new permissions needed).
+
+Note: products and suppliers are still managed only via `prisma/seed.ts` —
+there's no admin CRUD UI for those yet.
 
 The Prisma schema (`prisma/schema.prisma`) already models the full domain
 (orders, order lines, purchase requests, inventory, deliveries, invoices,
