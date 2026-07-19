@@ -28,9 +28,19 @@ type LocalLine = {
   unitPriceOverride: string;
 };
 
+// crypto.randomUUID() is only exposed in secure contexts (HTTPS or
+// localhost) — testing over a plain http://<LAN-IP> origin from a phone
+// leaves it undefined, so this key (just a React list key, not anything
+// security-sensitive) is generated without it.
+let lineKeyCounter = 0;
+function generateLineKey(): string {
+  lineKeyCounter += 1;
+  return `new-line-${lineKeyCounter}`;
+}
+
 function newLine(): LocalLine {
   return {
-    key: crypto.randomUUID(),
+    key: generateLineKey(),
     productId: "",
     quantity: "1",
     fulfillmentSource: "STORAGE",
