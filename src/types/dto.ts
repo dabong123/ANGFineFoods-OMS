@@ -61,6 +61,17 @@ export type ProductDTO = {
 export type SupplierDTO = {
   id: string;
   name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  isActive: boolean;
+};
+
+/** Lightweight shape for pickers (e.g. the order form's supplier select). */
+export type SupplierOptionDTO = {
+  id: string;
+  name: string;
 };
 
 export type OrderLineDTO = {

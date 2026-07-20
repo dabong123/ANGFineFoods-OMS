@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 
-import type { CustomerDTO, OrderDetailDTO, ProductDTO, SupplierDTO } from "@/types/dto";
+import type { CustomerDTO, OrderDetailDTO, ProductDTO, SupplierOptionDTO } from "@/types/dto";
 import { createOrder, getCustomerPricesAction, updateOrder } from "@/lib/actions/orders";
 import type { StockWarning } from "@/lib/order-engine";
 import { formatMoney } from "@/lib/format";
@@ -71,7 +71,7 @@ export function OrderForm({
   mode: "create" | "edit";
   customers: CustomerDTO[];
   products: ProductDTO[];
-  suppliers: SupplierDTO[];
+  suppliers: SupplierOptionDTO[];
   canOverridePricing: boolean;
   order?: OrderDetailDTO;
 }) {
