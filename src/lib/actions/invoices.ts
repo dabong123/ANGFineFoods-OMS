@@ -57,3 +57,34 @@ export async function recordPayment(input: {
   revalidatePath(`/invoices/${invoice.id}`);
   revalidatePath("/reports");
 }
+
+/**
+ * Manual override for correcting an invoice's status directly (e.g. a payment
+ * collected outside the system, or fixing a data-entry mistake) without going
+ * through the payment ledger. Forces amountPaid/balance to match the chosen
+ * status so AR reports stay consistent with what the badge shows.
+ */
+export async function setInvoiceStatus(invoiceId: string, status: "PAID" | "UNPAID"): Promise<void> {
+  const session = await requireSession();
+  if (!can(session.user.role, "invoices:edit")) {
+    throw new Error("Not authorized to edit invoices");
+  }
+
+  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  if (!invoice) throw new Error("Invoice not found");
+  if (invoice.status === "VOID") throw new Error("Cannot change the status of a voided invoice");
+
+  const total = invoice.total.toNumber();
+
+  await prisma.invoice.update({
+    where: { id: invoiceId },
+    data:
+      status === "PAID"
+        ? { status: "PAID", amountPaid: total, balance: 0 }
+        : { status: "UNPAID", amountPaid: 0, balance: total },
+  });
+
+  revalidatePath("/invoices");
+  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/reports");
+}

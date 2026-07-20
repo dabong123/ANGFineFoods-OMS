@@ -6,6 +6,7 @@ import { can } from "@/types";
 import { getInvoiceDetail } from "@/lib/data/invoices";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { InvoiceStatusOverride } from "@/components/invoices/invoice-status-override";
 import { RecordPaymentForm } from "@/components/invoices/record-payment-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,11 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           </Link>{" "}
           &middot; {invoice.deliveryNumber}
         </p>
+        {can(session.user.role, "invoices:edit") && (
+          <div className="mt-3">
+            <InvoiceStatusOverride invoiceId={invoice.id} status={invoice.status} />
+          </div>
+        )}
       </div>
 
       <Card>
