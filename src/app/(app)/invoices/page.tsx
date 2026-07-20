@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth-guard";
+import { can } from "@/types";
 import { getInvoices } from "@/lib/data/invoices";
 import { formatMoney } from "@/lib/format";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { InvoiceStatusSelect } from "@/components/invoices/invoice-status-select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default async function InvoicesPage() {
-  await requirePermission("invoices:view");
+  const session = await requirePermission("invoices:view");
+  const canEdit = can(session.user.role, "invoices:edit");
   const invoices = await getInvoices();
 
   return (
@@ -53,7 +56,11 @@ export default async function InvoicesPage() {
                   <TableCell className="text-right tabular-nums">{formatMoney(inv.total)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatMoney(inv.balance)}</TableCell>
                   <TableCell>
-                    <InvoiceStatusBadge status={inv.status} />
+                    {canEdit ? (
+                      <InvoiceStatusSelect invoiceId={inv.id} status={inv.status} />
+                    ) : (
+                      <InvoiceStatusBadge status={inv.status} />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
