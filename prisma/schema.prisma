@@ -168,6 +168,9 @@ model OrderLine {
   productId         String
   product           Product           @relation(fields: [productId], references: [id])
   quantity          Decimal           @db.Decimal(12, 3)
+  // True until the actual weight is confirmed at delivery time — lets sales
+  // agents place an order before a hand-cut/hand-packed item is weighed.
+  isWeightEstimated Boolean           @default(false)
   unitPrice         Decimal           @db.Decimal(12, 2)
   lineTotal         Decimal           @db.Decimal(12, 2)
   fulfillmentSource FulfillmentSource

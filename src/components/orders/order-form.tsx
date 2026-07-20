@@ -10,6 +10,7 @@ import type { StockWarning } from "@/lib/order-engine";
 import { formatMoney } from "@/lib/format";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ type LocalLine = {
   key: string;
   productId: string;
   quantity: string;
+  isWeightEstimated: boolean;
   fulfillmentSource: "STORAGE" | "SUPPLIER";
   supplierId: string;
   unitPriceOverride: string;
@@ -43,6 +45,7 @@ function newLine(): LocalLine {
     key: generateLineKey(),
     productId: "",
     quantity: "1",
+    isWeightEstimated: false,
     fulfillmentSource: "STORAGE",
     supplierId: "",
     unitPriceOverride: "",
@@ -54,6 +57,7 @@ function linesFromOrder(order: OrderDetailDTO): LocalLine[] {
     key: l.id,
     productId: l.productId,
     quantity: String(l.quantity),
+    isWeightEstimated: l.isWeightEstimated,
     fulfillmentSource: l.fulfillmentSource,
     supplierId: l.supplierId ?? "",
     unitPriceOverride: String(l.unitPrice),
@@ -189,6 +193,7 @@ export function OrderForm({
       lines: lines.map((l) => ({
         productId: l.productId,
         quantity: Number(l.quantity),
+        isWeightEstimated: l.isWeightEstimated,
         fulfillmentSource: l.fulfillmentSource,
         supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
         unitPriceOverride:
@@ -318,6 +323,15 @@ export function OrderForm({
                       value={line.quantity}
                       onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
                     />
+                    <label className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={line.isWeightEstimated}
+                        onCheckedChange={(checked) =>
+                          updateLine(line.key, { isWeightEstimated: checked === true })
+                        }
+                      />
+                      Est.
+                    </label>
                   </TableCell>
                   <TableCell>
                     {canOverridePricing ? (

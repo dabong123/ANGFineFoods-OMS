@@ -12,7 +12,8 @@ import {
 
 export async function createDelivery(
   orderId: string,
-  lineIds: string[]
+  lineIds: string[],
+  actualQuantities: Record<string, number> = {}
 ): Promise<{ deliveryId: string; invoiceId: string }> {
   const session = await requireSession();
   if (!can(session.user.role, "deliveries:create")) {
@@ -44,9 +45,27 @@ export async function createDelivery(
         `${line.product.name} is supplier-fulfilled and hasn't been marked received from the supplier yet`
       );
     }
+    if (line.isWeightEstimated) {
+      const actual = actualQuantities[line.id];
+      if (!actual || actual <= 0) {
+        throw new Error(`Enter the actual weight for ${line.product.name}`);
+      }
+    }
   }
 
-  const subtotal = selectedLines.reduce((sum, l) => sum + l.lineTotal.toNumber(), 0);
+  // Resolve each selected line's final quantity/total — estimated-weight
+  // lines get corrected to the actual weight confirmed at delivery time;
+  // everything else ships at whatever was on the order.
+  const resolvedLines = selectedLines.map((line) => {
+    const isCorrected = line.isWeightEstimated && actualQuantities[line.id] !== undefined;
+    const quantity = isCorrected ? actualQuantities[line.id] : line.quantity.toNumber();
+    const lineTotal = isCorrected
+      ? Math.round(quantity * line.unitPrice.toNumber() * 100) / 100
+      : line.lineTotal.toNumber();
+    return { line, isCorrected, quantity, lineTotal };
+  });
+
+  const subtotal = resolvedLines.reduce((sum, r) => sum + r.lineTotal, 0);
   const total = Math.round(subtotal * 100) / 100;
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + DEFAULT_PAYMENT_TERMS_DAYS);
@@ -66,6 +85,49 @@ export async function createDelivery(
       where: { id: { in: lineIds } },
       data: { deliveryId: delivery.id },
     });
+
+    let orderTotalDelta = 0;
+    for (const { line, isCorrected, quantity, lineTotal } of resolvedLines) {
+      if (!isCorrected) continue;
+
+      const quantityDelta = quantity - line.quantity.toNumber();
+      orderTotalDelta += lineTotal - line.lineTotal.toNumber();
+
+      await tx.orderLine.update({
+        where: { id: line.id },
+        data: { quantity, lineTotal, isWeightEstimated: false },
+      });
+
+      if (line.fulfillmentSource === "STORAGE" && line.product.trackInventory && line.stockDeducted) {
+        await tx.product.update({
+          where: { id: line.productId },
+          data: { currentStock: { decrement: quantityDelta } },
+        });
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: line.productId,
+            type: "ADJUSTMENT",
+            quantity: -quantityDelta,
+            note: `Actual weight confirmed at delivery for order line ${line.id}`,
+          },
+        });
+      } else if (line.fulfillmentSource === "SUPPLIER" && line.purchaseRequest) {
+        await tx.purchaseRequest.update({
+          where: { id: line.purchaseRequest.id },
+          data: { quantity },
+        });
+      }
+    }
+
+    if (orderTotalDelta !== 0) {
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          subtotal: { increment: Math.round(orderTotalDelta * 100) / 100 },
+          total: { increment: Math.round(orderTotalDelta * 100) / 100 },
+        },
+      });
+    }
 
     const invoiceNumber = await generateInvoiceNumber(tx);
     const invoice = await tx.invoice.create({

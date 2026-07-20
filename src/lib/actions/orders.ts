@@ -59,6 +59,7 @@ async function buildLines(
     built.push({
       productId: line.productId,
       quantity: line.quantity,
+      isWeightEstimated: line.isWeightEstimated ?? false,
       unitPrice,
       lineTotal,
       fulfillmentSource: line.fulfillmentSource,

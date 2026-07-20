@@ -81,6 +81,7 @@ export type OrderLineDTO = {
   productSku: string;
   unit: string;
   quantity: number;
+  isWeightEstimated: boolean;
   unitPrice: number;
   lineTotal: number;
   fulfillmentSource: FulfillmentSource;

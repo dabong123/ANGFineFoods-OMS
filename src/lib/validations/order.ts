@@ -4,6 +4,7 @@ export const orderLineInputSchema = z
   .object({
     productId: z.string().min(1, "Product is required"),
     quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+    isWeightEstimated: z.boolean().optional(),
     fulfillmentSource: z.enum(["STORAGE", "SUPPLIER"]),
     supplierId: z.string().optional(),
     // Only honored server-side when the actor has pricing:edit permission.

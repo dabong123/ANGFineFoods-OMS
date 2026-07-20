@@ -86,6 +86,7 @@ export async function getOrderDetailForSession(
       productSku: line.product.sku,
       unit: line.product.unit,
       quantity: line.quantity.toNumber(),
+      isWeightEstimated: line.isWeightEstimated,
       unitPrice: line.unitPrice.toNumber(),
       lineTotal: line.lineTotal.toNumber(),
       fulfillmentSource: line.fulfillmentSource,

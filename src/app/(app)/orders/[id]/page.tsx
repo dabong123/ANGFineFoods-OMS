@@ -88,6 +88,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   </TableCell>
                   <TableCell>
                     {formatQuantity(line.quantity)} {line.unit}
+                    {line.isWeightEstimated && (
+                      <Badge
+                        variant="outline"
+                        className="ml-1.5 border-transparent bg-amber-100 text-amber-800 text-xs dark:bg-amber-950 dark:text-amber-300"
+                      >
+                        Est.
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>{formatMoney(line.unitPrice)}</TableCell>
                   <TableCell>

@@ -83,6 +83,7 @@ export async function getInvoiceDetail(invoiceId: string): Promise<InvoiceDetail
       productSku: line.product.sku,
       unit: line.product.unit,
       quantity: line.quantity.toNumber(),
+      isWeightEstimated: false,
       unitPrice: line.unitPrice.toNumber(),
       lineTotal: line.lineTotal.toNumber(),
       fulfillmentSource: line.fulfillmentSource,
