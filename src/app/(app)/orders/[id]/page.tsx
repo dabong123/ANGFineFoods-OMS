@@ -20,8 +20,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   if (!order) notFound();
 
   const isOwnOrder = order.salesAgentId === session.user.id;
+  const editableStatus =
+    order.status === "DRAFT" ||
+    order.status === "PENDING_APPROVAL" ||
+    order.status === "APPROVED" ||
+    order.status === "PARTIALLY_DELIVERED";
   const canEdit =
-    (order.status === "DRAFT" || order.status === "PENDING_APPROVAL") &&
+    editableStatus &&
     ((isOwnOrder && can(session.user.role, "orders:edit:own")) ||
       can(session.user.role, "orders:edit:all"));
   const canCancel =

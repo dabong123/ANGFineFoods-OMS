@@ -4,8 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 
-import type { CustomerDTO, OrderDetailDTO, ProductDTO, SupplierOptionDTO } from "@/types/dto";
-import { createOrder, getCustomerPricesAction, updateOrder } from "@/lib/actions/orders";
+import type { CustomerDTO, OrderDetailDTO, OrderLineDTO, ProductDTO, SupplierOptionDTO } from "@/types/dto";
+import { createOrder, getCustomerPricesAction, updateOrder, updateApprovedOrder } from "@/lib/actions/orders";
 import type { StockWarning } from "@/lib/order-engine";
 import { formatMoney } from "@/lib/format";
 
@@ -52,16 +52,22 @@ function newLine(): LocalLine {
   };
 }
 
+function isLineLocked(l: OrderLineDTO): boolean {
+  return l.deliveryId !== null || (l.fulfillmentSource === "SUPPLIER" && l.purchaseRequestStatus === "RECEIVED");
+}
+
 function linesFromOrder(order: OrderDetailDTO): LocalLine[] {
-  return order.lines.map((l) => ({
-    key: l.id,
-    productId: l.productId,
-    quantity: String(l.quantity),
-    isWeightEstimated: l.isWeightEstimated,
-    fulfillmentSource: l.fulfillmentSource,
-    supplierId: l.supplierId ?? "",
-    unitPriceOverride: String(l.unitPrice),
-  }));
+  return order.lines
+    .filter((l) => !isLineLocked(l))
+    .map((l) => ({
+      key: l.id,
+      productId: l.productId,
+      quantity: String(l.quantity),
+      isWeightEstimated: l.isWeightEstimated,
+      fulfillmentSource: l.fulfillmentSource,
+      supplierId: l.supplierId ?? "",
+      unitPriceOverride: String(l.unitPrice),
+    }));
 }
 
 export function OrderForm({
@@ -92,6 +98,12 @@ export function OrderForm({
   const [result, setResult] = useState<{ orderId: string; warnings: StockWarning[] } | null>(
     null
   );
+
+  const isApprovedEdit =
+    mode === "edit" && !!order && (order.status === "APPROVED" || order.status === "PARTIALLY_DELIVERED");
+  const lockedLines = useMemo(() => (order ? order.lines.filter(isLineLocked) : []), [order]);
+  const existingLineIds = useMemo(() => new Set(order?.lines.map((l) => l.id) ?? []), [order]);
+  const lockedTotal = lockedLines.reduce((sum, l) => sum + l.lineTotal, 0);
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -168,7 +180,7 @@ export function OrderForm({
 
   function validate(): string | null {
     if (!customerId) return "Select a customer";
-    if (lines.length === 0) return "Add at least one line item";
+    if (lines.length === 0 && lockedLines.length === 0) return "Add at least one line item";
     for (const row of rows) {
       if (!row.line.productId) return "Every line needs a product";
       if (row.quantity <= 0) return "Quantity must be greater than 0";
@@ -187,28 +199,43 @@ export function OrderForm({
     }
     setError(null);
 
-    const payload = {
-      customerId,
-      notes: notes || undefined,
-      lines: lines.map((l) => ({
-        productId: l.productId,
-        quantity: Number(l.quantity),
-        isWeightEstimated: l.isWeightEstimated,
-        fulfillmentSource: l.fulfillmentSource,
-        supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
-        unitPriceOverride:
-          canOverridePricing && l.unitPriceOverride !== ""
-            ? Number(l.unitPriceOverride)
-            : undefined,
-      })),
-    };
+    const priceOverrideFor = (l: LocalLine) =>
+      canOverridePricing && l.unitPriceOverride !== "" ? Number(l.unitPriceOverride) : undefined;
 
     startTransition(async () => {
       try {
-        const res =
-          mode === "edit" && order
-            ? await updateOrder({ orderId: order.id, ...payload })
-            : await createOrder(payload);
+        let res: { orderId: string; warnings: StockWarning[] };
+        if (isApprovedEdit && order) {
+          res = await updateApprovedOrder({
+            orderId: order.id,
+            notes: notes || undefined,
+            lines: lines.map((l) => ({
+              lineId: existingLineIds.has(l.key) ? l.key : undefined,
+              productId: l.productId,
+              quantity: Number(l.quantity),
+              fulfillmentSource: l.fulfillmentSource,
+              supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
+              unitPriceOverride: priceOverrideFor(l),
+            })),
+          });
+        } else {
+          const payload = {
+            customerId,
+            notes: notes || undefined,
+            lines: lines.map((l) => ({
+              productId: l.productId,
+              quantity: Number(l.quantity),
+              isWeightEstimated: l.isWeightEstimated,
+              fulfillmentSource: l.fulfillmentSource,
+              supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
+              unitPriceOverride: priceOverrideFor(l),
+            })),
+          };
+          res =
+            mode === "edit" && order
+              ? await updateOrder({ orderId: order.id, ...payload })
+              : await createOrder(payload);
+        }
         setResult({ orderId: res.orderId, warnings: res.warnings });
         router.refresh();
       } catch (e) {
@@ -277,6 +304,44 @@ export function OrderForm({
         </CardContent>
       </Card>
 
+      {lockedLines.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Already shipped / received</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-xs text-muted-foreground">
+              These lines are locked because they&apos;ve already been delivered or received from the
+              supplier — editing them here would no longer match what actually went out or came in.
+            </p>
+            <Table className="min-w-[700px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[220px]">Product</TableHead>
+                  <TableHead className="w-[110px]">Qty</TableHead>
+                  <TableHead className="w-[110px]">Unit price</TableHead>
+                  <TableHead className="w-[130px]">Fulfillment</TableHead>
+                  <TableHead className="w-[110px] text-right">Line total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lockedLines.map((l) => (
+                  <TableRow key={l.id} className="text-muted-foreground">
+                    <TableCell>{l.productName}</TableCell>
+                    <TableCell>
+                      {l.quantity} {l.unit}
+                    </TableCell>
+                    <TableCell>{formatMoney(l.unitPrice)}</TableCell>
+                    <TableCell>{l.fulfillmentSource === "STORAGE" ? "Storage" : "Supplier"}</TableCell>
+                    <TableCell className="text-right">{formatMoney(l.lineTotal)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Line items</CardTitle>
@@ -323,15 +388,17 @@ export function OrderForm({
                       value={line.quantity}
                       onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
                     />
-                    <label className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Checkbox
-                        checked={line.isWeightEstimated}
-                        onCheckedChange={(checked) =>
-                          updateLine(line.key, { isWeightEstimated: checked === true })
-                        }
-                      />
-                      Est.
-                    </label>
+                    {!isApprovedEdit && (
+                      <label className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={line.isWeightEstimated}
+                          onCheckedChange={(checked) =>
+                            updateLine(line.key, { isWeightEstimated: checked === true })
+                          }
+                        />
+                        Est.
+                      </label>
+                    )}
                   </TableCell>
                   <TableCell>
                     {canOverridePricing ? (
@@ -391,7 +458,7 @@ export function OrderForm({
                       variant="ghost"
                       size="icon"
                       onClick={() => removeLine(line.key)}
-                      disabled={lines.length === 1}
+                      disabled={lines.length === 1 && lockedLines.length === 0}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -403,9 +470,21 @@ export function OrderForm({
 
           <div className="mt-4 flex justify-end">
             <div className="w-56 space-y-1 text-sm">
+              {lockedLines.length > 0 && (
+                <>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Already shipped</span>
+                    <span>{formatMoney(lockedTotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Editable lines</span>
+                    <span>{formatMoney(subtotal)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between font-medium">
                 <span>Total</span>
-                <span>{formatMoney(subtotal)}</span>
+                <span>{formatMoney(subtotal + lockedTotal)}</span>
               </div>
             </div>
           </div>
