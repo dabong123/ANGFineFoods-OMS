@@ -48,20 +48,24 @@ export function SupplierForm({
     };
 
     startTransition(async () => {
-      try {
-        let supplierId: string;
-        if (mode === "edit" && supplier) {
-          await updateSupplier(supplier.id, payload);
-          supplierId = supplier.id;
-        } else {
-          const res = await createSupplier(payload);
-          supplierId = res.supplierId;
+      let supplierId: string;
+      if (mode === "edit" && supplier) {
+        const res = await updateSupplier(supplier.id, payload);
+        if (!res.ok) {
+          setError(res.error);
+          return;
         }
-        router.push(`/suppliers/${supplierId}/edit`);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+        supplierId = supplier.id;
+      } else {
+        const res = await createSupplier(payload);
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        supplierId = res.supplierId;
       }
+      router.push(`/suppliers/${supplierId}/edit`);
+      router.refresh();
     });
   }
 

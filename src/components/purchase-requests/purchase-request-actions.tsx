@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { PurchaseRequestStatus } from "@prisma/client";
 
 import { markPurchaseRequestOrdered, markPurchaseRequestReceived } from "@/lib/actions/purchase-requests";
+import type { ActionResult } from "@/lib/action-result";
 import { Button } from "@/components/ui/button";
 
 export function PurchaseRequestActions({
@@ -18,15 +19,15 @@ export function PurchaseRequestActions({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function run(action: () => Promise<void>) {
+  function run(action: () => Promise<ActionResult>) {
     setError(null);
     startTransition(async () => {
-      try {
-        await action();
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res = await action();
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      router.refresh();
     });
   }
 

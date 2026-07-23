@@ -78,12 +78,12 @@ export function CreateDeliveryPanel({
     );
 
     startTransition(async () => {
-      try {
-        await createDelivery(orderId, Array.from(selected), actualQuantities);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res = await createDelivery(orderId, Array.from(selected), actualQuantities);
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      router.refresh();
     });
   }
 

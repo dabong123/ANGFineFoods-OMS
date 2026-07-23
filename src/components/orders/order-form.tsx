@@ -203,44 +203,50 @@ export function OrderForm({
       canOverridePricing && l.unitPriceOverride !== "" ? Number(l.unitPriceOverride) : undefined;
 
     startTransition(async () => {
-      try {
-        let res: { orderId: string; warnings: StockWarning[] };
-        if (isApprovedEdit && order) {
-          res = await updateApprovedOrder({
-            orderId: order.id,
-            notes: notes || undefined,
-            lines: lines.map((l) => ({
-              lineId: existingLineIds.has(l.key) ? l.key : undefined,
-              productId: l.productId,
-              quantity: Number(l.quantity),
-              fulfillmentSource: l.fulfillmentSource,
-              supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
-              unitPriceOverride: priceOverrideFor(l),
-            })),
-          });
-        } else {
-          const payload = {
-            customerId,
-            notes: notes || undefined,
-            lines: lines.map((l) => ({
-              productId: l.productId,
-              quantity: Number(l.quantity),
-              isWeightEstimated: l.isWeightEstimated,
-              fulfillmentSource: l.fulfillmentSource,
-              supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
-              unitPriceOverride: priceOverrideFor(l),
-            })),
-          };
-          res =
-            mode === "edit" && order
-              ? await updateOrder({ orderId: order.id, ...payload })
-              : await createOrder(payload);
+      if (isApprovedEdit && order) {
+        const res = await updateApprovedOrder({
+          orderId: order.id,
+          notes: notes || undefined,
+          lines: lines.map((l) => ({
+            lineId: existingLineIds.has(l.key) ? l.key : undefined,
+            productId: l.productId,
+            quantity: Number(l.quantity),
+            fulfillmentSource: l.fulfillmentSource,
+            supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
+            unitPriceOverride: priceOverrideFor(l),
+          })),
+        });
+        if (!res.ok) {
+          setError(res.error);
+          return;
         }
         setResult({ orderId: res.orderId, warnings: res.warnings });
         router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+        return;
       }
+
+      const payload = {
+        customerId,
+        notes: notes || undefined,
+        lines: lines.map((l) => ({
+          productId: l.productId,
+          quantity: Number(l.quantity),
+          isWeightEstimated: l.isWeightEstimated,
+          fulfillmentSource: l.fulfillmentSource,
+          supplierId: l.fulfillmentSource === "SUPPLIER" ? l.supplierId : undefined,
+          unitPriceOverride: priceOverrideFor(l),
+        })),
+      };
+      const res =
+        mode === "edit" && order
+          ? await updateOrder({ orderId: order.id, ...payload })
+          : await createOrder(payload);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setResult({ orderId: res.orderId, warnings: res.warnings });
+      router.refresh();
     });
   }
 

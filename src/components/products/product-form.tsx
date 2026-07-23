@@ -51,20 +51,24 @@ export function ProductForm({
     };
 
     startTransition(async () => {
-      try {
-        let productId: string;
-        if (mode === "edit" && product) {
-          await updateProduct(product.id, payload);
-          productId = product.id;
-        } else {
-          const res = await createProduct(payload);
-          productId = res.productId;
+      let productId: string;
+      if (mode === "edit" && product) {
+        const res = await updateProduct(product.id, payload);
+        if (!res.ok) {
+          setError(res.error);
+          return;
         }
-        router.push(`/products/${productId}/edit`);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+        productId = product.id;
+      } else {
+        const res = await createProduct(payload);
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        productId = res.productId;
       }
+      router.push(`/products/${productId}/edit`);
+      router.refresh();
     });
   }
 

@@ -24,12 +24,12 @@ export function InvoiceStatusSelect({ invoiceId, status }: { invoiceId: string; 
   function handleChange(value: string) {
     if (value !== "PAID" && value !== "UNPAID") return;
     startTransition(async () => {
-      try {
-        await setInvoiceStatus(invoiceId, value);
-        router.refresh();
-      } catch (e) {
-        window.alert(e instanceof Error ? e.message : "Something went wrong");
+      const res = await setInvoiceStatus(invoiceId, value);
+      if (!res.ok) {
+        window.alert(res.error);
+        return;
       }
+      router.refresh();
     });
   }
 

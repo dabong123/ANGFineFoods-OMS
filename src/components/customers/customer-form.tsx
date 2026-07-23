@@ -63,16 +63,16 @@ export function CustomerForm({
     };
 
     startTransition(async () => {
-      try {
-        const res =
-          mode === "edit" && customer
-            ? await updateCustomer(customer.id, payload)
-            : await createCustomer(payload);
-        router.push(`/customers/${res.customerId}/edit`);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res =
+        mode === "edit" && customer
+          ? await updateCustomer(customer.id, payload)
+          : await createCustomer(payload);
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      router.push(`/customers/${res.customerId}/edit`);
+      router.refresh();
     });
   }
 

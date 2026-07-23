@@ -52,23 +52,22 @@ export function UserForm({
     setError(null);
 
     startTransition(async () => {
-      try {
-        if (mode === "edit" && user) {
-          await updateUser(user.id, {
-            name: name.trim(),
-            email: email.trim(),
-            role,
-            isActive,
-            password,
-          });
-        } else {
-          await createUser({ name: name.trim(), email: email.trim(), role, password });
-        }
-        router.push("/users");
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res =
+        mode === "edit" && user
+          ? await updateUser(user.id, {
+              name: name.trim(),
+              email: email.trim(),
+              role,
+              isActive,
+              password,
+            })
+          : await createUser({ name: name.trim(), email: email.trim(), role, password });
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      router.push("/users");
+      router.refresh();
     });
   }
 

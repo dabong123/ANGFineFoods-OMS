@@ -18,12 +18,12 @@ export function InvoiceStatusOverride({ invoiceId, status }: { invoiceId: string
   function handleSetStatus(next: "PAID" | "UNPAID") {
     setError(null);
     startTransition(async () => {
-      try {
-        await setInvoiceStatus(invoiceId, next);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res = await setInvoiceStatus(invoiceId, next);
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      router.refresh();
     });
   }
 

@@ -28,20 +28,20 @@ export function RecordPaymentForm({ invoiceId, balance }: { invoiceId: string; b
       return;
     }
     startTransition(async () => {
-      try {
-        await recordPayment({
-          invoiceId,
-          amount: parsedAmount,
-          method: method || undefined,
-          reference: reference || undefined,
-        });
-        setAmount("");
-        setMethod("");
-        setReference("");
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res = await recordPayment({
+        invoiceId,
+        amount: parsedAmount,
+        method: method || undefined,
+        reference: reference || undefined,
+      });
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      setAmount("");
+      setMethod("");
+      setReference("");
+      router.refresh();
     });
   }
 

@@ -34,25 +34,25 @@ export function OrderActionsPanel({
   function handleApprove() {
     setError(null);
     startTransition(async () => {
-      try {
-        const res = await approveOrder(orderId);
-        setApprovalWarnings(res.warnings);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res = await approveOrder(orderId);
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      setApprovalWarnings(res.warnings);
+      router.refresh();
     });
   }
 
   function handleCancel() {
     setError(null);
     startTransition(async () => {
-      try {
-        await cancelOrder(orderId);
-        router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
+      const res = await cancelOrder(orderId);
+      if (!res.ok) {
+        setError(res.error);
+        return;
       }
+      router.refresh();
     });
   }
 
