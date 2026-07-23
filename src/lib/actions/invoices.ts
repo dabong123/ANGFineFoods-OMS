@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { prisma, TRANSACTION_OPTIONS } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth-guard";
 import { can } from "@/types";
 import { runAction, type ActionResult } from "@/lib/action-result";
@@ -53,7 +53,7 @@ export async function recordPayment(input: {
           status: newBalance <= 0 ? "PAID" : "PARTIALLY_PAID",
         },
       });
-    });
+    }, TRANSACTION_OPTIONS);
 
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoice.id}`);

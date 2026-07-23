@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { prisma, TRANSACTION_OPTIONS } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth-guard";
 import { can } from "@/types";
 import {
@@ -154,7 +154,7 @@ export async function createDelivery(
       });
 
       return { deliveryId: delivery.id, invoiceId: invoice.id };
-    });
+    }, TRANSACTION_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath(`/orders/${orderId}`);

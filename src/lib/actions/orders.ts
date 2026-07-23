@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { prisma, TRANSACTION_OPTIONS } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth-guard";
 import { can } from "@/types";
 import {
@@ -118,7 +118,7 @@ export async function createOrder(
 
       const warnings = autoApprove ? await applyApprovalSideEffects(tx, order.id) : [];
       return { orderId: order.id, warnings };
-    });
+    }, TRANSACTION_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath("/dashboard");
@@ -178,7 +178,7 @@ export async function updateOrder(
 
       const warnings = autoApprove ? await applyApprovalSideEffects(tx, existing.id) : [];
       return { warnings };
-    });
+    }, TRANSACTION_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath(`/orders/${existing.id}`);
@@ -306,7 +306,7 @@ export async function updateApprovedOrder(
         where: { id: existing.id },
         data: { notes: parsed.notes, subtotal: total, total },
       });
-    });
+    }, TRANSACTION_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath(`/orders/${existing.id}`);
@@ -335,7 +335,7 @@ export async function approveOrder(orderId: string): Promise<ActionResult<{ warn
         data: { status: "APPROVED", approvedAt: new Date(), approvedById: session.user.id },
       });
       return applyApprovalSideEffects(tx, orderId);
-    });
+    }, TRANSACTION_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath(`/orders/${orderId}`);
