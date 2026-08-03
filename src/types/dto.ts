@@ -201,6 +201,15 @@ export type ArAgingSummary = {
   invoiceCount: number;
 };
 
+export type SalesReportDTO = {
+  /** "YYYY-MM" */
+  month: string;
+  totalRevenue: number;
+  invoiceCount: number;
+  orderCount: number;
+  averageInvoiceValue: number;
+};
+
 export type DashboardMetric = {
   label: string;
   value: string;
