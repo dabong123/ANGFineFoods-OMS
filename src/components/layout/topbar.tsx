@@ -17,7 +17,7 @@ export function Topbar({ name, role }: { name: string; role: Role }) {
       <div className="flex items-center gap-2 sm:gap-3">
         <span className="hidden text-sm font-medium sm:inline">{name}</span>
         <Badge variant="secondary">{ROLE_LABELS[role] ?? role}</Badge>
-        <PushNotificationToggle />
+        {role === "OWNER" && <PushNotificationToggle />}
         <SignOutButton />
       </div>
     </header>

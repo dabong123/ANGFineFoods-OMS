@@ -22,7 +22,7 @@ import {
 } from "@/lib/order-engine";
 import { getCustomerPricesForCustomer } from "@/lib/data/customers";
 import { runAction, type ActionResult } from "@/lib/action-result";
-import { sendPushToUsers, getAllActiveUserIds } from "@/lib/push";
+import { sendPushToUsers, getActiveOwnerUserIds } from "@/lib/push";
 import { formatMoney } from "@/lib/format";
 
 type OrderActionResult = {
@@ -125,10 +125,10 @@ export async function createOrder(
     revalidatePath("/orders");
     revalidatePath("/dashboard");
 
-    const recipientIds = await getAllActiveUserIds();
+    const recipientIds = await getActiveOwnerUserIds();
     await sendPushToUsers(recipientIds, {
       title: "New order created",
-      body: `${result.orderNumber} — ${customer.name} — ${formatMoney(subtotal)}`,
+      body: `${result.orderNumber} — ${customer.name} — ${formatMoney(subtotal)} — by ${session.user.name}`,
       url: `/orders/${result.orderId}`,
     });
 

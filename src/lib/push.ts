@@ -60,7 +60,10 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload): 
   }
 }
 
-export async function getAllActiveUserIds(): Promise<string[]> {
-  const users = await prisma.user.findMany({ where: { isActive: true }, select: { id: true } });
+export async function getActiveOwnerUserIds(): Promise<string[]> {
+  const users = await prisma.user.findMany({
+    where: { isActive: true, role: "OWNER" },
+    select: { id: true },
+  });
   return users.map((u) => u.id);
 }
