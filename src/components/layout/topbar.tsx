@@ -1,6 +1,7 @@
 import type { Role } from "@prisma/client";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { PushNotificationToggle } from "@/components/notifications/push-notification-toggle";
 import { Badge } from "@/components/ui/badge";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -16,6 +17,7 @@ export function Topbar({ name, role }: { name: string; role: Role }) {
       <div className="flex items-center gap-2 sm:gap-3">
         <span className="hidden text-sm font-medium sm:inline">{name}</span>
         <Badge variant="secondary">{ROLE_LABELS[role] ?? role}</Badge>
+        <PushNotificationToggle />
         <SignOutButton />
       </div>
     </header>

@@ -22,6 +22,8 @@ import {
 } from "@/lib/order-engine";
 import { getCustomerPricesForCustomer } from "@/lib/data/customers";
 import { runAction, type ActionResult } from "@/lib/action-result";
+import { sendPushToUsers, getAllActiveUserIds } from "@/lib/push";
+import { formatMoney } from "@/lib/format";
 
 type OrderActionResult = {
   orderId: string;
@@ -117,11 +119,19 @@ export async function createOrder(
       });
 
       const warnings = autoApprove ? await applyApprovalSideEffects(tx, order.id) : [];
-      return { orderId: order.id, warnings };
+      return { orderId: order.id, orderNumber, warnings };
     }, TRANSACTION_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath("/dashboard");
+
+    const recipientIds = await getAllActiveUserIds();
+    await sendPushToUsers(recipientIds, {
+      title: "New order created",
+      body: `${result.orderNumber} — ${customer.name} — ${formatMoney(subtotal)}`,
+      url: `/orders/${result.orderId}`,
+    });
+
     return { orderId: result.orderId, status, warnings: result.warnings };
   });
 }
