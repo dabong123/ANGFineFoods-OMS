@@ -18,6 +18,7 @@ import {
   reverseSideEffectForLine,
   generateOrderNumber,
   resolveUnitPrice,
+  resolveUnitCost,
   type StockWarning,
 } from "@/lib/order-engine";
 import { getCustomerPricesForCustomer } from "@/lib/data/customers";
@@ -63,12 +64,17 @@ async function buildLines(
     const lineTotal = Math.round(unitPrice * line.quantity * 100) / 100;
     subtotal += lineTotal;
 
+    const unitCost = await resolveUnitCost(prisma, line.productId);
+    const costTotal = Math.round(unitCost * line.quantity * 100) / 100;
+
     built.push({
       productId: line.productId,
       quantity: line.quantity,
       isWeightEstimated: line.isWeightEstimated ?? false,
       unitPrice,
       lineTotal,
+      unitCost,
+      costTotal,
       fulfillmentSource: line.fulfillmentSource,
       supplierId: line.fulfillmentSource === "SUPPLIER" ? line.supplierId : null,
     });
@@ -258,6 +264,8 @@ export async function updateApprovedOrder(
             ? line.unitPriceOverride
             : computedPrice;
         const lineTotal = Math.round(unitPrice * line.quantity * 100) / 100;
+        const unitCost = await resolveUnitCost(tx, line.productId);
+        const costTotal = Math.round(unitCost * line.quantity * 100) / 100;
         const supplierId = line.fulfillmentSource === "SUPPLIER" ? line.supplierId ?? null : null;
 
         if (line.lineId) {
@@ -278,6 +286,8 @@ export async function updateApprovedOrder(
               quantity: line.quantity,
               unitPrice,
               lineTotal,
+              unitCost,
+              costTotal,
               fulfillmentSource: line.fulfillmentSource,
               supplierId,
               stockDeducted: false,
@@ -298,6 +308,8 @@ export async function updateApprovedOrder(
               quantity: line.quantity,
               unitPrice,
               lineTotal,
+              unitCost,
+              costTotal,
               fulfillmentSource: line.fulfillmentSource,
               supplierId,
             },

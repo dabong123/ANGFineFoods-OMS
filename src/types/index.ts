@@ -35,6 +35,7 @@ export type Permission =
   | "payments:record"
   | "reports:ar:view"
   | "reports:sales:view"
+  | "reports:profit:view"
   | "users:manage";
 
 const OWNER_PERMISSIONS: Permission[] = [
@@ -63,6 +64,7 @@ const OWNER_PERMISSIONS: Permission[] = [
   "payments:record",
   "reports:ar:view",
   "reports:sales:view",
+  "reports:profit:view",
   "users:manage",
 ];
 

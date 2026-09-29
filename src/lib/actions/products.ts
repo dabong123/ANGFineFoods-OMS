@@ -33,6 +33,7 @@ export async function createProduct(input: ProductInput): Promise<ActionResult<{
         name: parsed.name,
         unit: "kg",
         defaultSellingPrice: parsed.pricePerKg,
+        defaultCostPrice: parsed.costPerKg ?? 0,
         trackInventory: parsed.trackInventory,
         currentStock: parsed.trackInventory ? parsed.currentStock ?? 0 : 0,
       },
@@ -56,6 +57,7 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
       data: {
         name: parsed.name,
         defaultSellingPrice: parsed.pricePerKg,
+        defaultCostPrice: parsed.costPerKg ?? existing.defaultCostPrice,
         trackInventory: parsed.trackInventory,
         // Only overwrite stock if inventory tracking is (or was already) on —
         // never invent a stock figure for a product that never tracked one.

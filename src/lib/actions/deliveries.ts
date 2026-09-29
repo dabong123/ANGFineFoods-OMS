@@ -64,7 +64,10 @@ export async function createDelivery(
       const lineTotal = isCorrected
         ? Math.round(quantity * line.unitPrice.toNumber() * 100) / 100
         : line.lineTotal.toNumber();
-      return { line, isCorrected, quantity, lineTotal };
+      const costTotal = isCorrected
+        ? Math.round(quantity * line.unitCost.toNumber() * 100) / 100
+        : line.costTotal.toNumber();
+      return { line, isCorrected, quantity, lineTotal, costTotal };
     });
 
     const subtotal = resolvedLines.reduce((sum, r) => sum + r.lineTotal, 0);
@@ -89,7 +92,7 @@ export async function createDelivery(
       });
 
       let orderTotalDelta = 0;
-      for (const { line, isCorrected, quantity, lineTotal } of resolvedLines) {
+      for (const { line, isCorrected, quantity, lineTotal, costTotal } of resolvedLines) {
         if (!isCorrected) continue;
 
         const quantityDelta = quantity - line.quantity.toNumber();
@@ -97,7 +100,7 @@ export async function createDelivery(
 
         await tx.orderLine.update({
           where: { id: line.id },
-          data: { quantity, lineTotal, isWeightEstimated: false },
+          data: { quantity, lineTotal, costTotal, isWeightEstimated: false },
         });
 
         if (line.fulfillmentSource === "STORAGE" && line.product.trackInventory && line.stockDeducted) {

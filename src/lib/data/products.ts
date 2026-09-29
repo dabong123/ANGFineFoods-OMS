@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { ProductDTO } from "@/types/dto";
+import type { ProductDTO, ProductDetailDTO } from "@/types/dto";
 
 function toProductDTO(p: {
   id: string;
@@ -38,7 +38,8 @@ export async function getAllProducts(): Promise<ProductDTO[]> {
   return products.map(toProductDTO);
 }
 
-export async function getProductDetail(productId: string): Promise<ProductDTO | null> {
+export async function getProductDetail(productId: string): Promise<ProductDetailDTO | null> {
   const product = await prisma.product.findUnique({ where: { id: productId } });
-  return product ? toProductDTO(product) : null;
+  if (!product) return null;
+  return { ...toProductDTO(product), defaultCostPrice: product.defaultCostPrice.toNumber() };
 }

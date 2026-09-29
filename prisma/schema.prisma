@@ -83,6 +83,11 @@ model Product {
   name                String
   unit                String   @default("unit")
   defaultSellingPrice Decimal  @db.Decimal(12, 2)
+  // What we pay per kg — used to compute profit on each order line. Defaults
+  // to 0 (unset) for products created before cost tracking existed; profit
+  // on lines snapshotted while a product's cost was still 0 will understate
+  // true cost until it's filled in.
+  defaultCostPrice    Decimal  @default(0) @db.Decimal(12, 2)
   trackInventory      Boolean  @default(false)
   currentStock        Decimal  @default(0) @db.Decimal(12, 3)
   reorderPoint        Decimal? @db.Decimal(12, 3)
@@ -189,6 +194,11 @@ model OrderLine {
   isWeightEstimated Boolean           @default(false)
   unitPrice         Decimal           @db.Decimal(12, 2)
   lineTotal         Decimal           @db.Decimal(12, 2)
+  // Snapshotted from the product's cost at the time this line was written
+  // (created, or corrected at delivery/edit), same as unitPrice/lineTotal —
+  // so profit on a past order stays accurate even if cost changes later.
+  unitCost          Decimal           @default(0) @db.Decimal(12, 2)
+  costTotal         Decimal           @default(0) @db.Decimal(12, 2)
   fulfillmentSource FulfillmentSource
   supplierId        String?
   supplier          Supplier?         @relation(fields: [supplierId], references: [id])

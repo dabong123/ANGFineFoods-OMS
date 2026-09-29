@@ -58,6 +58,13 @@ export type ProductDTO = {
   isActive: boolean;
 };
 
+// Cost is owner-sensitive, so it's kept off the shared ProductDTO (used by
+// pickers every role can see, e.g. the order form) and only added here,
+// where the only consumer is the products:manage-gated edit/create form.
+export type ProductDetailDTO = ProductDTO & {
+  defaultCostPrice: number;
+};
+
 export type SupplierDTO = {
   id: string;
   name: string;
@@ -208,6 +215,15 @@ export type SalesReportDTO = {
   invoiceCount: number;
   orderCount: number;
   averageInvoiceValue: number;
+};
+
+// Cost/profit are owner-sensitive — kept off SalesReportDTO (which
+// reports:sales:view also shows to Accounting) and only returned here,
+// gated separately on reports:profit:view.
+export type ProfitReportDTO = {
+  totalCost: number;
+  netProfit: number;
+  marginPct: number;
 };
 
 export type DashboardMetric = {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/format";
+import { getProfitReportForMonth } from "@/lib/data/reports";
 import type { DashboardMetric } from "@/types/dto";
 import type { Session } from "next-auth";
 
@@ -27,7 +28,7 @@ async function getOwnerMetrics(): Promise<DashboardMetric[]> {
   const monthStart = startOfMonth();
   const now = new Date();
 
-  const [openOrders, revenueMtd, outstandingAr, overdueCount] = await Promise.all([
+  const [openOrders, revenueMtd, outstandingAr, overdueCount, profitMtd] = await Promise.all([
     prisma.order.count({ where: { status: { in: [...OPEN_ORDER_STATUSES] } } }),
     prisma.invoice.aggregate({
       where: { issueDate: { gte: monthStart } },
@@ -40,11 +41,17 @@ async function getOwnerMetrics(): Promise<DashboardMetric[]> {
     prisma.invoice.count({
       where: { status: { in: ["UNPAID", "PARTIALLY_PAID"] }, dueDate: { lt: now } },
     }),
+    getProfitReportForMonth(now.getFullYear(), now.getMonth() + 1),
   ]);
 
   return [
     { label: "Open Orders", value: String(openOrders) },
     { label: "Revenue (MTD)", value: formatMoney(revenueMtd._sum.total?.toNumber() ?? 0) },
+    {
+      label: "Net Profit (MTD)",
+      value: formatMoney(profitMtd.netProfit),
+      sublabel: `${profitMtd.marginPct.toFixed(1)}% margin`,
+    },
     { label: "Outstanding AR", value: formatMoney(outstandingAr._sum.balance?.toNumber() ?? 0) },
     { label: "Overdue Invoices", value: String(overdueCount) },
   ];

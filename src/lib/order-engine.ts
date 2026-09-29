@@ -26,6 +26,12 @@ export async function resolveUnitPrice(
   return product.defaultSellingPrice.toNumber();
 }
 
+/** What the product costs us per kg, snapshotted onto each order line for profit tracking. */
+export async function resolveUnitCost(tx: Tx, productId: string): Promise<number> {
+  const product = await tx.product.findUniqueOrThrow({ where: { id: productId } });
+  return product.defaultCostPrice.toNumber();
+}
+
 export type StockWarning = {
   productId: string;
   productName: string;

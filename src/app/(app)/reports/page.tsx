@@ -1,7 +1,7 @@
 import { requireAnyPermission } from "@/lib/auth-guard";
 import { can } from "@/types";
 import { getArAgingSummary } from "@/lib/data/invoices";
-import { getSalesReportForMonth } from "@/lib/data/reports";
+import { getSalesReportForMonth, getProfitReportForMonth } from "@/lib/data/reports";
 import { formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,12 +33,14 @@ export default async function ReportsPage({
   const session = await requireAnyPermission(["reports:ar:view", "reports:sales:view"]);
   const canViewSales = can(session.user.role, "reports:sales:view");
   const canViewAr = can(session.user.role, "reports:ar:view");
+  const canViewProfit = can(session.user.role, "reports:profit:view");
 
   const { year, month } = parseMonthParam(searchParams.month);
   const monthValue = `${year}-${String(month).padStart(2, "0")}`;
 
-  const [sales, aging] = await Promise.all([
+  const [sales, profit, aging] = await Promise.all([
     canViewSales ? getSalesReportForMonth(year, month) : null,
+    canViewProfit ? getProfitReportForMonth(year, month) : null,
     canViewAr ? getArAgingSummary() : null,
   ]);
 
@@ -97,6 +99,43 @@ export default async function ReportsPage({
               </CardContent>
             </Card>
           </div>
+        </div>
+      )}
+
+      {profit && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium">Profit</h2>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Net profit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold">{formatMoney(profit.netProfit)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Cost of goods</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold">{formatMoney(profit.totalCost)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Margin</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold">{profit.marginPct.toFixed(1)}%</div>
+              </CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Based on each order line&apos;s cost at the time it was placed. Lines from before product
+            costs were set, or products still missing a cost, count as 0 cost and will overstate
+            profit until costs are filled in under Products.
+          </p>
         </div>
       )}
 

@@ -3,8 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import type { ProductDTO } from "@/types/dto";
+import type { ProductDetailDTO } from "@/types/dto";
 import { createProduct, updateProduct } from "@/lib/actions/products";
+import { formatMoney } from "@/lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,7 @@ export function ProductForm({
   product,
 }: {
   mode: "create" | "edit";
-  product?: ProductDTO;
+  product?: ProductDetailDTO;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -26,16 +27,21 @@ export function ProductForm({
 
   const [name, setName] = useState(product?.name ?? "");
   const [pricePerKg, setPricePerKg] = useState(product ? String(product.defaultSellingPrice) : "");
+  const [costPerKg, setCostPerKg] = useState(product ? String(product.defaultCostPrice) : "");
   const [trackInventory, setTrackInventory] = useState(product?.trackInventory ?? false);
   const [currentStock, setCurrentStock] = useState(product ? String(product.currentStock) : "0");
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
+
+  const price = Number(pricePerKg) || 0;
+  const cost = Number(costPerKg) || 0;
+  const margin = price - cost;
+  const marginPct = price > 0 ? (margin / price) * 100 : 0;
 
   function handleSubmit() {
     if (!name.trim()) {
       setError("Name is required");
       return;
     }
-    const price = Number(pricePerKg);
     if (!price || price <= 0) {
       setError("Enter a price greater than 0");
       return;
@@ -45,6 +51,7 @@ export function ProductForm({
     const payload = {
       name: name.trim(),
       pricePerKg: price,
+      costPerKg: costPerKg === "" ? undefined : cost,
       trackInventory,
       currentStock: trackInventory ? Number(currentStock) || 0 : undefined,
       isActive,
@@ -105,6 +112,32 @@ export function ProductForm({
               />
               <span className="text-sm text-muted-foreground">per kg</span>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Cost per kg</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={costPerKg}
+                onChange={(e) => setCostPerKg(e.target.value)}
+                placeholder="0.00"
+                className="max-w-[160px]"
+              />
+              <span className="text-sm text-muted-foreground">per kg</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              What you pay for it — used to calculate profit. Leave blank until you know it; profit
+              will show as 0 for this product until it&apos;s set.
+            </p>
+            {price > 0 && cost > 0 && (
+              <p className="text-xs">
+                Margin: <span className="font-medium">{formatMoney(margin)}</span> per kg (
+                {marginPct.toFixed(1)}%)
+              </p>
+            )}
           </div>
 
           <label className="flex items-center gap-2 text-sm">
