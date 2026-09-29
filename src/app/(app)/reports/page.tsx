@@ -3,6 +3,7 @@ import { can } from "@/types";
 import { getArAgingSummary } from "@/lib/data/invoices";
 import { getSalesReportForMonth, getProfitReportForMonth } from "@/lib/data/reports";
 import { formatMoney } from "@/lib/format";
+import { BackfillCostsButton } from "@/components/reports/backfill-costs-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ export default async function ReportsPage({
   const canViewSales = can(session.user.role, "reports:sales:view");
   const canViewAr = can(session.user.role, "reports:ar:view");
   const canViewProfit = can(session.user.role, "reports:profit:view");
+  const canManageProducts = can(session.user.role, "products:manage");
 
   const { year, month } = parseMonthParam(searchParams.month);
   const monthValue = `${year}-${String(month).padStart(2, "0")}`;
@@ -104,7 +106,10 @@ export default async function ReportsPage({
 
       {profit && (
         <div className="space-y-4">
-          <h2 className="text-lg font-medium">Profit</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-medium">Profit</h2>
+            {canManageProducts && <BackfillCostsButton />}
+          </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
@@ -134,7 +139,8 @@ export default async function ReportsPage({
           <p className="text-xs text-muted-foreground">
             Based on each order line&apos;s cost at the time it was placed. Lines from before product
             costs were set, or products still missing a cost, count as 0 cost and will overstate
-            profit until costs are filled in under Products.
+            profit until costs are filled in under Products
+            {canManageProducts ? " — use “Recalculate costs” above after filling them in" : ""}.
           </p>
         </div>
       )}

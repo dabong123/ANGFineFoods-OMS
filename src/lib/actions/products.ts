@@ -73,3 +73,37 @@ export async function updateProduct(productId: string, input: ProductInput): Pro
     return {};
   });
 }
+
+/**
+ * One-time fixup for profit tracking: order lines written before a product's
+ * cost was set (or before cost tracking existed at all) are stuck at 0 cost
+ * forever, since cost is snapshotted at write time like price is. This finds
+ * every such line and backfills it from its product's current cost — the
+ * best estimate available since the real historical cost was never
+ * recorded. Safe to run repeatedly: already-costed lines (costTotal > 0)
+ * are left untouched, and lines whose product still has no cost set are
+ * skipped rather than backfilled with 0 again.
+ */
+export async function backfillOrderLineCosts(): Promise<ActionResult<{ updatedCount: number }>> {
+  return runAction(async () => {
+    await requireManageProducts();
+
+    const lines = await prisma.orderLine.findMany({
+      where: { costTotal: 0 },
+      select: { id: true, quantity: true, product: { select: { defaultCostPrice: true } } },
+    });
+
+    let updatedCount = 0;
+    for (const line of lines) {
+      const unitCost = line.product.defaultCostPrice.toNumber();
+      if (unitCost <= 0) continue;
+      const costTotal = Math.round(unitCost * line.quantity.toNumber() * 100) / 100;
+      await prisma.orderLine.update({ where: { id: line.id }, data: { unitCost, costTotal } });
+      updatedCount++;
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { updatedCount };
+  });
+}
