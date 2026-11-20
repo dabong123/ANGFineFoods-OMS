@@ -10,12 +10,13 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Search } from "lucide-react";
 
 import type { OrderListItemDTO } from "@/types/dto";
 import { formatMoney } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 function sortableHeader(label: string) {
@@ -61,7 +62,17 @@ const columns: ColumnDef<OrderListItemDTO>[] = [
 
 export function OrdersTable({ orders }: { orders: OrderListItemDTO[] }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "orderDate", desc: true }]);
-  const data = useMemo(() => orders, [orders]);
+  const [search, setSearch] = useState("");
+
+  const data = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return orders;
+    return orders.filter((o) =>
+      [o.orderNumber, o.customerName, o.salesAgentName].some((field) =>
+        field.toLowerCase().includes(query)
+      )
+    );
+  }, [orders, search]);
 
   const table = useReactTable({
     data,
@@ -81,33 +92,50 @@ export function OrdersTable({ orders }: { orders: OrderListItemDTO[] }) {
   }
 
   return (
-    <div className="rounded-lg border border-border">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
+    <div className="space-y-3">
+      <div className="relative max-w-sm">
+        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by order #, customer, or sales agent"
+          className="pl-8"
+        />
+      </div>
+      {data.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+          No orders match &quot;{search}&quot;.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
               ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} className="cursor-pointer">
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id} className="p-0">
-                  <Link href={`/orders/${row.original.id}`} className="block px-3 py-3">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </Link>
-                </TableCell>
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="cursor-pointer">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="p-0">
+                      <Link href={`/orders/${row.original.id}`} className="block px-3 py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Link>
+                    </TableCell>
+                  ))}
+                </TableRow>
               ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
