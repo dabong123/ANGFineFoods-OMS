@@ -50,8 +50,24 @@ export const updateApprovedOrderSchema = z.object({
   lines: z.array(approvedOrderLineInputSchema),
 });
 
+// For correcting a mistake on a line that's already been delivered (and may
+// already be invoiced/paid) — quantity and price only, no fulfillment or
+// product changes, since those are what a post-delivery correction is for.
+export const correctOrderLineInputSchema = z.object({
+  lineId: z.string().min(1),
+  quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+  unitPrice: z.coerce.number().nonnegative("Price cannot be negative"),
+});
+
+export const correctDeliveredOrderSchema = z.object({
+  orderId: z.string().min(1),
+  lines: z.array(correctOrderLineInputSchema).min(1),
+});
+
 export type OrderLineInput = z.infer<typeof orderLineInputSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
 export type ApprovedOrderLineInput = z.infer<typeof approvedOrderLineInputSchema>;
 export type UpdateApprovedOrderInput = z.infer<typeof updateApprovedOrderSchema>;
+export type CorrectOrderLineInput = z.infer<typeof correctOrderLineInputSchema>;
+export type CorrectDeliveredOrderInput = z.infer<typeof correctDeliveredOrderSchema>;

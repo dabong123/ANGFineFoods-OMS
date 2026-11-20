@@ -7,6 +7,7 @@ import { getOrderDetailForSession } from "@/lib/data/orders";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderActionsPanel } from "@/components/orders/order-actions-panel";
+import { OrderCorrectionPanel } from "@/components/orders/order-correction-panel";
 import { DeliveriesList } from "@/components/deliveries/deliveries-list";
 import { CreateDeliveryPanel } from "@/components/deliveries/create-delivery-panel";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     (order.status === "APPROVED" || order.status === "PARTIALLY_DELIVERED") &&
     can(session.user.role, "deliveries:create");
   const undeliveredLines = order.lines.filter((l) => !l.deliveryId);
+  const deliveredLines = order.lines.filter((l) => l.deliveryId);
+  const canCorrect = can(session.user.role, "orders:correct");
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -162,6 +165,10 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           orderId={order.id}
           undeliveredLines={undeliveredLines}
         />
+      )}
+
+      {canCorrect && deliveredLines.length > 0 && (
+        <OrderCorrectionPanel orderId={order.id} lines={deliveredLines} />
       )}
     </div>
   );

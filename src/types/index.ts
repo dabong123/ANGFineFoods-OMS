@@ -24,6 +24,7 @@ export type Permission =
   | "orders:approve"
   | "orders:cancel:own"
   | "orders:cancel:all"
+  | "orders:correct"
   | "pricing:edit"
   | "products:manage"
   | "suppliers:manage"
@@ -53,6 +54,7 @@ const OWNER_PERMISSIONS: Permission[] = [
   "orders:approve",
   "orders:cancel:own",
   "orders:cancel:all",
+  "orders:correct",
   "pricing:edit",
   "products:manage",
   "suppliers:manage",

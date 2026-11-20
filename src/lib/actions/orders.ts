@@ -8,9 +8,11 @@ import {
   createOrderSchema,
   updateOrderSchema,
   updateApprovedOrderSchema,
+  correctDeliveredOrderSchema,
   type CreateOrderInput,
   type UpdateOrderInput,
   type UpdateApprovedOrderInput,
+  type CorrectDeliveredOrderInput,
 } from "@/lib/validations/order";
 import {
   applyApprovalSideEffects,
@@ -335,6 +337,125 @@ export async function updateApprovedOrder(
     revalidatePath("/dashboard");
     revalidatePath("/purchase-requests");
     return { orderId: existing.id, warnings };
+  });
+}
+
+/**
+ * Owner-only correction for a mistake (wrong quantity or price) on a line
+ * that's already been delivered — and possibly already invoiced and paid.
+ * Quantity/price only, no product/fulfillment changes: unlike updateApprovedOrder
+ * this intentionally reaches past the "delivered lines are locked" rule, so it
+ * also re-syncs the stock deduction and the linked invoice so nothing drifts
+ * out of agreement with the corrected order.
+ */
+export async function correctDeliveredOrderLines(
+  input: CorrectDeliveredOrderInput
+): Promise<ActionResult<{ orderId: string }>> {
+  return runAction(async () => {
+    const session = await requireSession();
+    if (!can(session.user.role, "orders:correct")) {
+      throw new Error("Not authorized to correct a delivered order");
+    }
+    const parsed = correctDeliveredOrderSchema.parse(input);
+
+    const existing = await prisma.order.findUnique({
+      where: { id: parsed.orderId },
+      include: { lines: { include: { product: true } } },
+    });
+    if (!existing) throw new Error("Order not found");
+    if (existing.status !== "DELIVERED" && existing.status !== "PARTIALLY_DELIVERED") {
+      throw new Error("Only delivered orders can be corrected this way");
+    }
+
+    const lineMap = new Map(existing.lines.map((l) => [l.id, l]));
+    for (const line of parsed.lines) {
+      const current = lineMap.get(line.lineId);
+      if (!current) {
+        throw new Error("One or more lines no longer exist on this order — reload and try again");
+      }
+      if (!current.deliveryId) {
+        throw new Error("Only already-delivered lines can be corrected here — use the regular edit instead");
+      }
+    }
+
+    const affectedDeliveryIds = new Set<string>();
+
+    await prisma.$transaction(async (tx) => {
+      for (const line of parsed.lines) {
+        const current = lineMap.get(line.lineId)!;
+        const quantityDelta = line.quantity - current.quantity.toNumber();
+        const lineTotal = Math.round(line.unitPrice * line.quantity * 100) / 100;
+        const costTotal = Math.round(current.unitCost.toNumber() * line.quantity * 100) / 100;
+
+        if (
+          quantityDelta !== 0 &&
+          current.fulfillmentSource === "STORAGE" &&
+          current.stockDeducted &&
+          current.product.trackInventory
+        ) {
+          await tx.product.update({
+            where: { id: current.productId },
+            data: { currentStock: { decrement: quantityDelta } },
+          });
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: current.productId,
+              type: "ADJUSTMENT",
+              quantity: -quantityDelta,
+              note: `Post-delivery correction — order line ${current.id}`,
+            },
+          });
+        }
+
+        await tx.orderLine.update({
+          where: { id: line.lineId },
+          data: {
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            lineTotal,
+            costTotal,
+          },
+        });
+
+        affectedDeliveryIds.add(current.deliveryId!);
+      }
+
+      const allLines = await tx.orderLine.findMany({ where: { orderId: existing.id } });
+      const subtotal = allLines.reduce((sum, l) => sum + l.lineTotal.toNumber(), 0);
+      const total = Math.round(subtotal * 100) / 100;
+      await tx.order.update({ where: { id: existing.id }, data: { subtotal: total, total } });
+
+      for (const deliveryId of affectedDeliveryIds) {
+        const invoice = await tx.invoice.findUnique({ where: { deliveryId } });
+        if (!invoice) continue;
+        if (invoice.status === "VOID") {
+          throw new Error("Cannot correct a line whose invoice has been voided");
+        }
+
+        const deliveryLines = await tx.orderLine.findMany({ where: { deliveryId } });
+        const newSubtotal = deliveryLines.reduce((sum, l) => sum + l.lineTotal.toNumber(), 0);
+        const newTotal = Math.round(newSubtotal * 100) / 100;
+        const amountPaid = invoice.amountPaid.toNumber();
+        const newBalance = Math.round((newTotal - amountPaid) * 100) / 100;
+
+        await tx.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            subtotal: newTotal,
+            total: newTotal,
+            balance: newBalance,
+            status: newBalance <= 0 ? "PAID" : amountPaid > 0 ? "PARTIALLY_PAID" : "UNPAID",
+          },
+        });
+      }
+    }, TRANSACTION_OPTIONS);
+
+    revalidatePath("/orders");
+    revalidatePath(`/orders/${existing.id}`);
+    revalidatePath("/invoices");
+    revalidatePath("/reports");
+    revalidatePath("/dashboard");
+    return { orderId: existing.id };
   });
 }
 
